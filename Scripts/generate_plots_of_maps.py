@@ -14,6 +14,7 @@ def PlotKillDensity(df_, round_, map_):
     # generate axes of specified map
     bg = plt.imread(maps_path + map_ + '.png')
     fig, (ax1, ax2) = plt.subplots(1,2,figsize=(18,16))
+    plt.subplots_adjust(wspace = .01)
     ax1.grid(b=True, which='major', color='w', linestyle='--', alpha=0.25)
     ax2.grid(b=True, which='major', color='w', linestyle='--', alpha=0.25)
     ax1.imshow(bg, zorder=0, extent=[0.0, 1024, 0., 1024])
