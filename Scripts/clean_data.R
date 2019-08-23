@@ -118,6 +118,11 @@ damage[, idx := NULL]
 damage[, t_alive := na.locf(t_alive), by = .(file, round)]
 damage[, ct_alive := na.locf(ct_alive), by = .(file, round)]
 
+# damage data: remove rounds with a negative number of people remaining
+
+damage <- damage[!(paste(file, round) %in% damage[t_alive < 0, paste(file, round)])]
+damage <- damage[!(paste(file, round) %in% damage[ct_alive < 0, paste(file, round)])]
+
 # damage data: merge on round-level information
 # remove rounds not found in round data
 
@@ -132,6 +137,10 @@ damage[rounds, winner_side := i.winner_side]
 damage[rounds, round_type := i.round_type]
 damage[rounds, ct_eq_val := i.ct_eq_val]
 damage[rounds, t_eq_val := i.t_eq_val]
+
+# damage data: remove rounds without any winner
+
+damage <- damage[(!paste(file, round) %in% damage[winner_side == 'None', paste(file, round)])]
 
 # damage data: scale player location coordinates
 
