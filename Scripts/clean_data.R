@@ -123,6 +123,10 @@ damage[, ct_alive := na.locf(ct_alive), by = .(file, round)]
 damage <- damage[!(paste(file, round) %in% damage[t_alive < 0, paste(file, round)])]
 damage <- damage[!(paste(file, round) %in% damage[ct_alive < 0, paste(file, round)])]
 
+# damage data: remove rounds with 0 people remaining on each team
+
+damage <- damage[!(paste(file, round) %in% damage[t_alive == 0 & ct_alive == 0, paste(file, round)])]
+
 # damage data: merge on round-level information
 # remove rounds not found in round data
 
