@@ -127,6 +127,12 @@ damage <- damage[!(paste(file, round) %in% damage[ct_alive < 0, paste(file, roun
 
 damage <- damage[!(paste(file, round) %in% damage[t_alive == 0 & ct_alive == 0, paste(file, round)])]
 
+# damage data: remove additional rounds with an incorrect number of people alive
+
+damage <- damage[!paste(file, round) %in% damage[(att_side == 'Terrorist' & ct_alive == 5 & isKill == T) | 
+                                                   (att_side == 'CounterTerrorist' & t_alive == 5 & isKill == T), 
+                                                 paste(file, round)]]
+
 # damage data: merge on round-level information
 # remove rounds not found in round data
 
@@ -158,6 +164,8 @@ damage[maps, ResY := i.ResY]
 damage[maps, StartX := i.StartX]
 damage[maps, StartY := i.StartY]
 damage[maps, map_name := map_name]
+damage[is.na(map_name) & map == 'de_nuke', map_name := 'Nuke']
+stopifnot(damage[is.na(map_name), .N] == 0)
 
 damage[, att_pos_x := (ResX * (att_pos_x - StartX)) / (EndX - StartX)]
 damage[, att_pos_y := (ResY * (att_pos_y - StartY)) / (EndY - StartY)]
@@ -165,6 +173,37 @@ damage[, vic_pos_x := (ResX * (vic_pos_x - StartX)) / (EndX - StartX)]
 damage[, vic_pos_y := (ResY * (vic_pos_y - StartY)) / (EndY - StartY)]
 
 damage[, `:=`(EndX = NULL, EndY = NULL, ResX = NULL, ResY = NULL, StartX = NULL, StartY = NULL)]
+
+###################################################################################################################
+
+# add/format columns
+
+# create outcome = Terrorist round win
+damage[, T_win := winner_side == 'Terrorist']
+
+# create state of game variables to indicate number of T and CT remaining
+damage[, RoundState := paste0('T', t_alive, 'CT', ct_alive)]
+
+# create RoundState before kill
+damage[att_side == 'Terrorist', RoundState_previous := paste0(substr(RoundState, 1, 4), 
+                                                              as.character(as.numeric(substr(RoundState, 5, 5)) + 1))]
+damage[att_side == 'CounterTerrorist', RoundState_previous := paste0(substr(RoundState, 1, 1), 
+                                                                     as.character(as.numeric(substr(RoundState, 2, 2)) + 1), 
+                                                                     substr(RoundState, 3, 5))]
+
+# damage data: remove rounds when a kill occurs after a team has been eliminated
+damage <- damage[!paste(file, round) %in% damage[grepl('0', RoundState_previous), paste(file, round)]]
+
+# create Tkill and CTkill flags
+damage[, Tkill := att_side == 'Terrorist']
+damage[, CTkill := att_side == 'CounterTerrorist']
+
+# create bomb planted flag
+damage[, BombPlant := is_bomb_planted == TRUE]
+
+# create BombLocation = map + bomb site
+damage[bomb_site == '' | is.na(bomb_site), bomb_site := 'None']
+damage[, BombLocation := paste(toupper(gsub('de_', '', map)), bomb_site)]
 
 ###################################################################################################################
 
