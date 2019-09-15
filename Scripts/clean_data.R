@@ -6,6 +6,8 @@ library(zoo)
 data_path <- 'E:/CS-GO-Analytics/Raw Data/'
 output_path <- 'E:/CS-GO-Analytics/Processed Data/'
 
+###################################################################################################################
+
 # read in round-level data
 
 rounds <- rbind(fread(paste0(data_path, 'esea_meta_demos.part1.csv'), na.strings = ''), 
@@ -37,6 +39,10 @@ maps[map_name == 'Dust2', map_name := 'Dust II']
 maps[map_name == 'Cbble', map_name := 'Cobblestone']
 
 ###################################################################################################################
+
+# damage data: add number of rounds in each match
+
+damage[, Match_NumRounds := uniqueN(round), by = file]
 
 # kills data: convert seconds to number of seconds in game
 # fix missing rounds by inferring times from others where possible
