@@ -211,6 +211,11 @@ damage[, BombPlant := is_bomb_planted == TRUE]
 damage[bomb_site == '' | is.na(bomb_site), bomb_site := 'None']
 damage[, BombLocation := paste(toupper(gsub('de_', '', map)), bomb_site)]
 
+# add total team hp remaining within each round
+
+setkey(damage, file, round, tick)
+damage[, Team_HP_Remaining := 500 - cumsum(hp_dmg), by = .(file, round, vic_side)]
+
 ###################################################################################################################
 
 # save damage file
