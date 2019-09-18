@@ -211,8 +211,10 @@ damage[, BombPlant := is_bomb_planted == TRUE]
 damage[bomb_site == '' | is.na(bomb_site), bomb_site := 'None']
 damage[, BombLocation := paste(toupper(gsub('de_', '', map)), bomb_site)]
 
-# add total team hp remaining within each round
+# create T equipment value - CT equipment value
+damage[, Tval_minus_CTval := t_eq_val - ct_eq_val]
 
+# add total team hp remaining within each round
 setkey(damage, file, round, tick)
 damage[, Team_HP_Remaining := 500 - cumsum(hp_dmg), by = .(file, round, vic_side)]
 
