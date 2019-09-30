@@ -65,7 +65,7 @@ gc()
 # TRAIN MODELS
 
 # collect model names
-models_LR <- c('LR1', 'LR2', 'LR3')
+models_LR <- c('LR1', 'LR2', 'LR3', 'LR4')
 models_RF <- c('RF1')
 models <- c(models_LR, models_RF, 'lasso', 'ridge')
 
@@ -75,12 +75,15 @@ models <- c(models_LR, models_RF, 'lasso', 'ridge')
 LR1 <- glm(T_win ~ RoundState, 
            data = train_df, family = 'binomial')
 summary(LR1)
-LR2 <- glm(T_win ~ t_eq_val + ct_eq_val + seconds + round_type + RoundState + BombLocation, 
+LR2 <- glm(T_win ~ seconds + round_type + RoundState + BombLocation, 
            data = train_df, family = 'binomial')
 summary(LR2)
-LR3 <- glm(T_win ~ Tval_minus_CTval + seconds + round_type + RoundState + Tval_minus_CTval * RoundState + BombLocation, 
+LR3 <- glm(T_win ~ t_eq_val + ct_eq_val + seconds + round_type + RoundState + BombLocation, 
            data = train_df, family = 'binomial')
 summary(LR3)
+LR4 <- glm(T_win ~ Tval_minus_CTval + seconds + round_type + RoundState + Tval_minus_CTval * RoundState + BombLocation, 
+           data = train_df, family = 'binomial')
+summary(LR4)
 
 # logistic regression: predict on the test set and remove models from memory
 for(mod in models_LR){
