@@ -50,7 +50,7 @@ df[, BombPlant := relevel(factor(BombPlant), ref = 'FALSE')]
 df <- df[!(paste(file, round) %in% df[Team_HP_Remaining < 0, paste(file, round)])]
 
 # split data - sample rounds, not rows
-pct <- .4
+pct <- .6
 rounds <- df[, unique(paste(file, round))]
 samp <- sample.int(n = length(rounds), size = floor(pct * length(rounds)), replace = F)
 samp1 <- samp[1: floor(length(samp) / 2)]
@@ -67,10 +67,8 @@ gc()
 # TRAIN MODELS
 
 # collect model names
-models_LR <- c('LR1', 'LR2')
-models_RF <- c('RF1')
-models_EN <- c('EN1')
-models <- c(models_LR, models_RF, models_EN)
+models_LR <- c('LR1', 'LR2', 'LR3')
+models <- models_LR
 
 # logistic regression
 # outcome = T wins round
@@ -78,10 +76,13 @@ models <- c(models_LR, models_RF, models_EN)
 LR1 <- glm(T_win ~ RoundState + Team_HP_Remaining, 
            data = train_df, family = 'binomial')
 summary(LR1)
-LR2 <- glm(T_win ~ t_eq_val + ct_eq_val + seconds + round_type + RoundState + BombLocation + Team_HP_Remaining + 
-             RoundState * Team_HP_Remaining, 
+LR2 <- glm(T_win ~ t_eq_val + ct_eq_val + seconds + round_type + RoundState + BombLocation + Team_HP_Remaining, 
            data = train_df, family = 'binomial')
 summary(LR2)
+LR3 <- glm(T_win ~ t_eq_val + ct_eq_val + seconds + round_type + RoundState + BombLocation + Team_HP_Remaining + 
+             RoundState * Team_HP_Remaining, 
+           data = train_df, family = 'binomial')
+summary(LR3)
 
 # logistic regression: predict on the test set and remove models from memory
 for(mod in models_LR){
@@ -89,57 +90,6 @@ for(mod in models_LR){
   test_df <- CalibratedProbs(df_ = test_df, model_ = mod, interval_width_ = .04)
   rm(list = mod)
 }
-gc()
-
-# random forests
-# outcome = T wins round
-RF1 <- ranger(factor(T_win) ~ t_eq_val + ct_eq_val + seconds + round_type + RoundState + BombLocation + Team_HP_Remaining, 
-              data = train_df, num.threads = 6, probability = T, importance = 'impurity', num.trees = 100, 
-              respect.unordered.factors = T)
-importance(RF1)
-
-# random forests: predict on the test set and remove models from memory
-for(mod in models_RF){
-  test_df[, eval(paste0('probs', mod)) := predict(get(mod), data = test_df, type = 'response')$predictions[, 2]]
-  test_df <- CalibratedProbs(df_ = test_df, model_ = mod, interval_width_ = .04)
-  rm(list = mod)
-}
-gc()
-
-# elastic net
-# outcome = T wins round
-
-x_train <- model.matrix(T_win ~ RoundState + round_type + BombLocation + Team_HP_Remaining + RoundState * Team_HP_Remaining, 
-                        data = train_df)
-y_train <- as.matrix(train_df[, T_win])
-x_test <- model.matrix(T_win ~ RoundState + round_type + BombLocation + Team_HP_Remaining + RoundState * Team_HP_Remaining, 
-                       data = test_df)
-y_test <- as.matrix(test_df[, T_win])
-
-number_of_mix_params <- 5
-mix <- seq(0, 1, 1 / number_of_mix_params)
-results <- data.table(expand.grid(MixingParameter = seq(0, 1, 1 / number_of_mix_params)))
-
-for(j in mix){
-  print(j)
-  cv_mod <- cv.glmnet(x_train, y_train, alpha = j, family = 'binomial')
-  print('cv done')
-  mod <- glmnet(x_train, y_train, alpha = j, family = 'binomial')
-  print('model trained')
-  rmse_val <- RMSE(predict(mod, newx = x_test, s = cv_mod$lambda.min, type = 'response'), y_test, nrow(x_test))
-  results[MixingParameter == j, rmse := rmse_val]
-  rm(mod, cv_mod)
-  gc()
-}
-
-alpha_star <- results[rmse == min(rmse), MixingParameter]
-cv_mod <- cv.glmnet(x_train, y_train, alpha = alpha_star, family = 'binomial', type.measure = 'mse')
-EN1 <- glmnet(x_train, y_train, alpha = alpha_star, family = 'binomial')
-
-test_df[, probsEN1 := predict(EN1, newx = x_test, s = cv_mod$lambda.min, type = 'response')]
-test_df <- CalibratedProbs(df_ = test_df, model_ = 'EN1', interval_width_ = .04)
-
-rm(cv_mod, EN1, results)
 gc()
 
 ###################################################################################################################
