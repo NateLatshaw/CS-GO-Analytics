@@ -23,6 +23,8 @@ damage[, uniqueN(file)] # 14,927
 damage[, uniqueN(paste(file, round))] # 380,967
 damage[, .N] # 10,538,182
 
+damage[, inRoundCounter := 1:.N, by = .(file, round)]
+
 # read in kill-level data
 # seconds = number of seconds into round, not seconds of game
 
@@ -190,12 +192,10 @@ damage[, T_win := winner_side == 'Terrorist']
 # create state of game variables to indicate number of T and CT remaining
 damage[, RoundState := paste0('T', t_alive, 'CT', ct_alive)]
 
-# create RoundState before kill
-damage[att_side == 'Terrorist', RoundState_previous := paste0(substr(RoundState, 1, 4), 
-                                                              as.character(as.numeric(substr(RoundState, 5, 5)) + 1))]
-damage[att_side == 'CounterTerrorist', RoundState_previous := paste0(substr(RoundState, 1, 1), 
-                                                                     as.character(as.numeric(substr(RoundState, 2, 2)) + 1), 
-                                                                     substr(RoundState, 3, 5))]
+# create RoundState before damage
+setkey(damage, file, round, tick, inRoundCounter)
+damage[, RoundState_previous := shift(RoundState, type = 'lag', n = 1), by = .(file, round)]
+damage[is.na(RoundState_previous), RoundState_previous := 'T5CT5']
 
 # damage data: remove rounds when a kill occurs after a team has been eliminated
 damage <- damage[!paste(file, round) %in% damage[grepl('0', RoundState_previous), paste(file, round)]]
@@ -215,8 +215,33 @@ damage[, BombLocation := paste(toupper(gsub('de_', '', map)), bomb_site)]
 damage[, Tval_minus_CTval := t_eq_val - ct_eq_val]
 
 # add total team hp remaining within each round
-setkey(damage, file, round, tick)
+setkey(damage, file, round, tick, inRoundCounter)
 damage[, Team_HP_Remaining := 500 - cumsum(hp_dmg), by = .(file, round, vic_side)]
+
+damage[vic_side == 'Terrorist', T_HP_remaining := Team_HP_Remaining]
+damage[vic_side == 'CounterTerrorist', CT_HP_remaining := Team_HP_Remaining]
+damage[, Team_HP_Remaining := NULL]
+
+damage[, idx := 1:.N, by = .(file, round)]
+damage[idx == 1 & is.na(T_HP_remaining), T_HP_remaining := 500]
+damage[idx == 1 & is.na(CT_HP_remaining), CT_HP_remaining := 500]
+damage[, idx := NULL]
+
+damage[, T_HP_remaining := na.locf(T_HP_remaining), by = .(file, round)]
+damage[, CT_HP_remaining := na.locf(CT_HP_remaining), by = .(file, round)]
+#View(damage[, .(file, round, tick, att_side, vic_side, hp_dmg, T_HP_remaining, CT_HP_remaining)])
+
+# remove rounds where remaining HP remaining is < 0
+damage <- damage[!(paste(file, round) %in% damage[T_HP_remaining < 0 | CT_HP_remaining < 0, paste(file, round)])]
+
+# create T HP remaining - CT HP remaining
+damage[, T_HP_minus_CT_HP := T_HP_remaining - CT_HP_remaining]
+
+# identify first damage of round
+setkey(damage, file, round, tick, inRoundCounter)
+damage[, idx := (1:.N), by = .(file, round)]
+damage[, first_damage := idx == 1]
+damage[, idx := NULL]
 
 ###################################################################################################################
 
