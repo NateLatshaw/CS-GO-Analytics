@@ -23,8 +23,6 @@ damage[, uniqueN(file)] # 14,927
 damage[, uniqueN(paste(file, round))] # 380,967
 damage[, .N] # 10,538,182
 
-damage[, inRoundCounter := 1:.N, by = .(file, round)]
-
 # read in kill-level data
 # seconds = number of seconds into round, not seconds of game
 
@@ -41,6 +39,21 @@ maps[map_name == 'Dust2', map_name := 'Dust II']
 maps[map_name == 'Cbble', map_name := 'Cobblestone']
 
 ###################################################################################################################
+
+# damage data: identify first damage of round
+
+damage[, inRoundCounter := 1:.N, by = .(file, round)]
+setkey(damage, file, round, tick, inRoundCounter)
+damage[, idx := (1:.N), by = .(file, round)]
+damage[, first_round_damage := idx == 1]
+damage[, idx := NULL]
+
+# damage data: merge beginning and ending seconds of each round
+
+setkey(damage, file, round)
+setkey(rounds, file, round)
+damage[rounds, round_start_seconds := i.start_seconds]
+damage[rounds, round_end_seconds := i.end_seconds]
 
 # damage data: add number of rounds in each match
 
@@ -236,12 +249,6 @@ damage <- damage[!(paste(file, round) %in% damage[T_HP_remaining < 0 | CT_HP_rem
 
 # create T HP remaining - CT HP remaining
 damage[, T_HP_minus_CT_HP := T_HP_remaining - CT_HP_remaining]
-
-# identify first damage of round
-setkey(damage, file, round, tick, inRoundCounter)
-damage[, idx := (1:.N), by = .(file, round)]
-damage[, first_damage := idx == 1]
-damage[, idx := NULL]
 
 ###################################################################################################################
 
