@@ -49,7 +49,7 @@ test_df[, Twin_prob := predict(mod, type = 'response', newdata = test_df)]
 sub_design_mat <- model.matrix(~ t_eq_val + ct_eq_val + round_type + BombLocation, data = test_df)
 initial_coefs <- coef(mod)[!grepl('RoundState|seconds|HP_remaining', names(coef(mod)))]
 test_df[, initial_Twin_prob := plogis(as.vector(matrix(initial_coefs, nrow = 1) %*% t(sub_design_mat)))]
-initial_probs_df <- test_df[first_damage == T]
+initial_probs_df <- test_df[first_round_damage == T]
 initial_probs_df[, Twin_prob_previous := initial_Twin_prob]
 
 # create covariates of previous state
@@ -62,7 +62,7 @@ test_df[, lag_seconds := seconds - 1]
 #test_df[, .(file, round, att_side, vic_side, hp_dmg, T_HP_remaining, lag_T_HP_remaining, CT_HP_remaining, lag_CT_HP_remaining)]
 
 # calculate probabilities for previous state
-test_df <- copy(test_df[first_damage == F])
+test_df <- copy(test_df[first_round_damage == F])
 test_df[, `:=`(tmp_T_HP = T_HP_remaining, tmp_CT_HP = CT_HP_remaining, tmp_seconds = seconds)]
 test_df[, `:=`(T_HP_remaining = lag_T_HP_remaining, CT_HP_remaining = lag_CT_HP_remaining, seconds = lag_seconds, 
                tmp_RoundState = RoundState)]
