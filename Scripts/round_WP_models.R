@@ -62,10 +62,10 @@ PlotDamageWP <- function(df_, file_, round_){
   p <- ggplot(plot_df, aes(x = seconds, y = prob, color = Side)) + 
     geom_line(size = 1.5, alpha = .6) + 
     scale_color_manual(values = c('#0000FF', '#FF0000')) + 
-    labs(x = 'Time in round', y = 'Win probability\n') + 
-    ggtitle(paste0('Match: ', file_, ', Round: ', round_)) + 
+    labs(x = 'Time in round', y = 'Win probability\n', title = paste0('Match: ', file_), subtitle = paste0('Round: ', round_)) + 
+    theme_bw() + 
     theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.title = element_blank(), 
-          text = element_text(size = 16), plot.title = element_text(hjust = 0.5), legend.position = 'bottom') + 
+          text = element_text(size = 16), legend.position = 'bottom') + 
     scale_y_continuous(breaks = seq(0, 1, .1)) + 
     geom_abline(slope = 0, intercept = 0) + 
     geom_abline(slope = 0, intercept = 1) + 
@@ -91,11 +91,14 @@ PlotCalibration <- function(df_, models_){
     print(paste0('Log Loss: ', LogLoss(df_ = df_copy, pred_col_ = paste0('probs', mod), actual_col_ = 'T_win')))
     print(paste0('RMSE: ', RMSE(df_copy[, get(paste0('probs', mod))], df_copy[, T_win], df_copy[, .N])))
   }
+  plot_df[model == 'KillsModel', model := 'Kills Model']
+  plot_df[model == 'DamageModel', model := 'Damage Model']
   p <- ggplot(plot_df, aes(x = probs_grp_midpoint, y = actual_T_win, color = model)) + 
     geom_point(size = 5, alpha = .6) + 
-    scale_color_manual(values = c('#0000FF', '#FF0000')) + 
+    scale_color_manual(values = c('#FF0000', '#0000FF')) + 
     geom_abline(slope = 1, intercept = 0) + 
     labs(x = '\nMidpoint of predicted interval', y = 'Observed T win share\n') + 
+    theme_bw() + 
     theme(legend.title = element_blank(), text = element_text(size = 16), plot.title = element_text(hjust = 0.5), 
           legend.position = 'bottom')
   return(p)
@@ -155,13 +158,13 @@ df <- fread(paste0(data_path, 'processed_damage_with_wp.csv'))
 # PLOTS
 
 # PLOT WP
-png(paste0(wp_plots_path, 'damage_wp_plot.png'))
+png(paste0(wp_plots_path, 'damage_wp_plot.png'), height = 480, width = 600)
 PlotDamageWP(df_ = df, file_ = 'esea_match_13785855.dem', round_ = 15)
 dev.off()
 
 # PLOT MODEL CALIBRATION
-png(paste0(calibration_plots_path, 'model_calibration.png'))
-PlotCalibration(df_ = df, models_ = c('DamageModel', 'KillsModel'))
+png(paste0(calibration_plots_path, 'model_calibration.png'), height = 480, width = 600)
+PlotCalibration(df_ = df, models_ = c('KillsModel', 'DamageModel'))
 dev.off()
 
 ###################################################################################################################
