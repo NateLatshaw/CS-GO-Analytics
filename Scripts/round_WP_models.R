@@ -3,7 +3,10 @@ gc()
 library(data.table)
 library(ggplot2)
 library(zoo)
+library(gganimate)
 set.seed(123)
+height <- 480
+width <- 600
 
 data_path <- 'E:/CS-GO-Analytics/Processed Data/'
 wp_plots_path <- 'E:/CS-GO-Analytics/Output/Win Probability Plots/'
@@ -36,10 +39,12 @@ RMSE <- function(predicted, actual, n){
   sqrt(sum((predicted - actual) ^ 2) / n)
 }
 
-PlotDamageWP <- function(df_, file_, round_){
+PlotDamageWP <- function(df_, file_, round_, return_plot_ = T){
   # create plot df
-  plot_df <- df[file == file_ & round == round_, .(seconds, Twin_prob = probsDamageModel, winner_side, round_start_seconds)]
-  plot_df <- merge(plot_df, data.table(seconds = seq(plot_df[, unique(round_start_seconds)], plot_df[, max(seconds)], by = .001)), by = 'seconds', all.y = T)
+  plot_df <- df[file == file_ & round == round_, .(seconds, Twin_prob = probsDamageModel, winner_side, round_start_seconds)][order(-seconds)]
+  plot_df[, seconds := round(seconds, digits = 3)]
+  plot_df <- plot_df[!duplicated(plot_df$seconds)]
+  plot_df <- merge(plot_df, data.table(seconds = seq(plot_df[, unique(round(round_start_seconds, digits = 3))], plot_df[, max(round(seconds, digits = 3))], by = .001)), by = 'seconds', all.y = T)
   plot_df[, idx := 1:.N]
   plot_df[idx == 1, Twin_prob := .5]
   plot_df[, idx := NULL]
@@ -70,7 +75,11 @@ PlotDamageWP <- function(df_, file_, round_){
     geom_abline(slope = 0, intercept = 0) + 
     geom_abline(slope = 0, intercept = 1) + 
     geom_abline(slope = 0, intercept = .5, linetype = 2)
-  return(p)
+  if(return_plot_ == T){
+    return(p)
+  } else {
+    return(plot_df)
+  }
 }
 
 PlotCalibration <- function(df_, models_){
@@ -158,15 +167,33 @@ df <- fread(paste0(data_path, 'processed_damage_with_wp.csv'))
 # PLOTS
 
 # PLOT WP
-png(paste0(wp_plots_path, 'damage_wp_plot.png'), height = 480, width = 600)
-PlotDamageWP(df_ = df, file_ = 'esea_match_13785855.dem', round_ = 15)
+png(paste0(wp_plots_path, 'damage_wp_plot.png'), height = height, width = width)
+PlotDamageWP(df_ = df, file_ = 'esea_match_13785855.dem', round_ = 15, return_plot_ = T)
 dev.off()
 
 # PLOT MODEL CALIBRATION
-png(paste0(calibration_plots_path, 'model_calibration.png'), height = 480, width = 600)
+png(paste0(calibration_plots_path, 'model_calibration.png'), height = height, width = width)
 PlotCalibration(df_ = df, models_ = c('KillsModel', 'DamageModel'))
 dev.off()
 
 ###################################################################################################################
+# ANIMATION
+
+# animated WP plot
+p <- PlotDamageWP(df_ = df, file_ = 'esea_match_13785855.dem', round_ = 15, return_plot_ = T)
+a <- p + 
+  geom_point(size = 3) + 
+  transition_reveal(seconds)
+animate(a, fps = 10, height = height, width = width)
+anim_save(paste0(wp_plots_path, 'animated_WP_plot.gif'))
+
+p <- PlotDamageWP(df_ = df, file_ = 'esea_match_13785855.dem', round_ = 8, return_plot_ = T)
+a <- p + 
+  geom_point(size = 3) + 
+  transition_reveal(seconds)
+animate(a, fps = 10, height = height, width = width)
+anim_save(paste0(wp_plots_path, 'animated_WP_plot2.gif'))
+
+
 
 
